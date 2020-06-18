@@ -8,3 +8,11 @@ Pseudocode and concepts documented in [data_pseudocode.py](data_pseudocode.py).
   - Data from 9 subjects is placed in the testing data set
   - While data from the other 9 is placed in the training data set
 - Training class ratio is 90:270 (subject:imposter) by design
+
+### Random Forest Algorithm
+Will use the TensorFlow class BoostedTreesClassifier as the model. Requirements:
+- Separate features and labels with Dataframe.pop()
+- Convert dataframe into Tensor with tf.data.Dataset.from_tensor_slices()
+- Define input function to break data into batches
+- Define evaluate function to run on test data
+- Create model, train, and evaluate
