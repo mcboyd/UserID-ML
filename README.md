@@ -9,7 +9,14 @@ Code, pseudocode, and concepts documented in [data folder](data).
   - While data from the other 9 is placed in the training data set
 - Training class ratio is 90:270 (subject:imposter) by design
 
-<<<<<<< HEAD
+### Random Forest Algorithm
+Will use the TensorFlow class BoostedTreesClassifier as the model. Requirements:
+- Separate features and labels with Dataframe.pop()
+- Convert dataframe into Tensor with tf.data.Dataset.from_tensor_slices()
+- Define input function to break data into batches
+- Define evaluate function to run on test data
+- Create model, train, and evaluate
+
 ### Equal Error Rate (EER)
 Pseudocode in [equal_error_rate.py](equal_error_rate.py).
 - Technical documentation and formulas: https://www.researchgate.net/post/Any_advice_on_computing_Equal_Error_Rate
@@ -20,13 +27,3 @@ Pseudocode in [equal_error_rate.py](equal_error_rate.py).
   - https://towardsdatascience.com/understanding-auc-roc-curve-68b2303cc9c5
   - https://www.statisticshowto.com/receiver-operating-characteristic-roc-curve/
 - Plot the true positive rate against the false positive rate to get the ROC, then use the sklearn library to calculate the EER
-
-=======
-### Random Forest Algorithm
-Will use the TensorFlow class BoostedTreesClassifier as the model. Requirements:
-- Separate features and labels with Dataframe.pop()
-- Convert dataframe into Tensor with tf.data.Dataset.from_tensor_slices()
-- Define input function to break data into batches
-- Define evaluate function to run on test data
-- Create model, train, and evaluate
->>>>>>> 42aa87382693ce50e8b2d279a07312d89170ef71
