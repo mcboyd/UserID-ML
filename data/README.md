@@ -12,7 +12,7 @@ See [data_pseudocode.py](data_pseudocode.py).
 
 
 ### "Raw" data - ARFF files
-The [ARFF files](/arff) contain the aggregated and binned data as supplied by the paper authors.   
+The [ARFF files](arff) contain the aggregated and binned data as supplied by the paper authors.   
 Unfortunately the data in the files cannot be imported to a Pandas dataframe as-is. There are some minor formatting tweaks required:
 - Remove double-quotes around each column name *(these prevent the column names from importing into the dataframe)*
 - Remove extra spaces in column definitions where column data is non-numeric *(these prevent the associated column data from importing)*  
