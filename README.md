@@ -8,3 +8,15 @@ Pseudocode and concepts documented in [data_pseudocode.py](data_pseudocode.py).
   - Data from 9 subjects is placed in the testing data set
   - While data from the other 9 is placed in the training data set
 - Training class ratio is 90:270 (subject:imposter) by design
+
+### Equal Error Rate (EER)
+Pseudocode in [equal_error_rate.py](equal_error_rate.py).
+- Technical documentation and formulas: https://www.researchgate.net/post/Any_advice_on_computing_Equal_Error_Rate
+- We can use ROC from the sklearn library
+  - https://stackoverflow.com/questions/28339746/equal-error-rate-in-python
+  - https://yangcha.github.io/EER-ROC/
+- ROC (Receiver Operating Characteristic)
+  - https://towardsdatascience.com/understanding-auc-roc-curve-68b2303cc9c5
+  - https://www.statisticshowto.com/receiver-operating-characteristic-roc-curve/
+- Plot the true positive rate against the false positive rate to get the ROC, then use the sklearn library to calculate the EER
+
