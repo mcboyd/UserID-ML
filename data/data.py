@@ -19,7 +19,8 @@ stats = [[0] for row in range(number_subjects)]  # Holds stats from model testin
 
 # Open folder of data for phone accel sensor and process files one-by-one
 for dirpath, dirnames, files in os.walk('arff/phone/accel'):
-  # print(f'Found directory: {dirpath}')
+  temp_data = pd.DataFrame()
+  files.sort()
   for file_name in files:
     print(file_name)
     raw_data, meta = loadarff(os.path.join(dirpath, file_name))
@@ -30,22 +31,25 @@ for dirpath, dirnames, files in os.walk('arff/phone/accel'):
     str_df = str_df.stack().str.decode('utf-8').unstack()
     for col in str_df:
         df_data[col] = str_df[col]
-    df_data = df_data[df_data.ACTIVITY == activity]  # Remove rows for all other activities
-    df_data = df_data.add_prefix('a_')
-    # print(df_data)
-    # print(df_data.X3)
-
-    for col in df_data.iloc[:,1:43]:  # Extract first 42 columns of data
-      all_data[col] = df_data[col].copy()
-
-    # Exatrct 43rd column of data
-    all_data = pd.concat([all_data, df_data.a_RESULTANT], axis=1).copy()
     
-    print(all_data)
+    df_data = df_data[df_data.ACTIVITY == activity]  # Remove rows for all other activities
+    df_data = df_data.add_prefix('a_')  # Prefix column labels to identify as accel data 
+
+    for col in df_data.iloc[:,43:91]:  # Delete columns of unused data
+      df_data = df_data.drop(columns=[col])
+    df_data = df_data.drop(columns=['a_ACTIVITY'])  # Delete ACTIVITY column (unused)
+
+    temp_data = pd.concat([temp_data, df_data], ignore_index=True)  # Accumulate accel data
+  
+  # print(temp_data)
+  all_data = pd.concat([all_data, temp_data])  # Add all accel data to main dataframe
+
+print(all_data)
 
 # Open folder of data for phone gyro sensor and process files one-by-one
 for dirpath, dirnames, files in os.walk('arff/phone/gyro'):
-  # print(f'Found directory: {dirpath}')
+  temp_data = pd.DataFrame()
+  files.sort()
   for file_name in files:
     print(file_name)
     raw_data, meta = loadarff(os.path.join(dirpath, file_name))
@@ -56,19 +60,20 @@ for dirpath, dirnames, files in os.walk('arff/phone/gyro'):
     str_df = str_df.stack().str.decode('utf-8').unstack()
     for col in str_df:
         df_data[col] = str_df[col]
-    df_data = df_data[df_data.ACTIVITY == activity]  # Remove rows for all other activities
-    df_data = df_data.add_prefix('g_')
-    # print(df_data)
-    # print(df_data.X3)
-
-    for col in df_data.iloc[:,1:43]:  # Extract first 42 columns of data
-      all_data[col] = df_data[col].copy()
-
-    # Exatrct 43rd column of data
-    all_data = pd.concat([all_data, df_data.g_RESULTANT], axis=1).copy()
     
-    print(all_data)
+    df_data = df_data[df_data.ACTIVITY == activity]  # Remove rows for all other activities
+    df_data = df_data.add_prefix('g_')  # Prefix column labels to identify as gyro data
 
+    for col in df_data.iloc[:,43:91]:  # Delete columns of unused data
+      df_data = df_data.drop(columns=[col])
+    df_data = df_data.drop(columns=['g_ACTIVITY'])  # Delete ACTIVITY column (unused)
 
+    temp_data = pd.concat([temp_data, df_data], ignore_index=True)  # Accumulate accel data
+  
+  # print(temp_data)
+  all_data = pd.concat([all_data, temp_data], axis=1)  # Add all accel data to main dataframe
+
+print(all_data)
+
+# Looks right, but add code to verify a_class = g_class for all rows
 # WIP...
-
