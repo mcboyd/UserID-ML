@@ -15,6 +15,10 @@
 import pandas
 import pytorch
 import random as rand
+import tensorflow as tf
+
+# Use while debugging
+tf.enable_eager_execution()
 
 
 activity = 'A'  # Code for walking activity
@@ -94,6 +98,7 @@ def imposter(subject_id):
 	imp_data.Subject_Id = 0  # Set the subject id column for all of the imposter data to be 0; this is their "class"
 	return imp_data
 
+# Defines a function that returns (features, labels) as required for TF train() and evaluate()
 def make_input_fn(subject, imposter, batch_size, n_epochs=None):
 	def input_fn():
                 data = pd.concat([subject, imposter])
@@ -109,6 +114,7 @@ def train(subject, imposter):
 	feature_columns = []
 	for feature_name in column_names:
 		feature_columns.append(tf.feature_column.numeric_column(feature_name, dtype=tf.float32))
+	# Train using batch size of sqrt(N)
 	batch = floor(sqrt(len(subject.index)))
 	train_input_fn = make_input_fn(subject, imposter, batch)
 	model = tf.estimator.BoostedTreesClassifier(feature_columns, n_batches_per_layer=batch)
@@ -117,7 +123,9 @@ def train(subject, imposter):
 
 
 def test(model, subject, imposter):
-	eval_input_fn = make_input_fn(model, subject, NUM_TEST_SAMPLES, n_epochs=1)
+	# Evaluate using full testing set
+	n_samples = len(subject.index)
+	eval_input_fn = make_input_fn(subject, imposter, n_samples, n_epochs=1)
 	stat = model.evaluate(eval_input_fn)
 	return stat
 
