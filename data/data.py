@@ -18,7 +18,7 @@ stats = [[0] for row in range(number_subjects)]  # Holds stats from model testin
 # print(len(stats))
 
 # Open folder of data for phone accel sensor and process files one-by-one
-for dirpath, dirnames, files in os.walk('arff_files/phone/accel'):
+for dirpath, dirnames, files in os.walk('arff/phone/accel'):
   # print(f'Found directory: {dirpath}')
   for file_name in files:
     print(file_name)
@@ -44,7 +44,7 @@ for dirpath, dirnames, files in os.walk('arff_files/phone/accel'):
     print(all_data)
 
 # Open folder of data for phone gyro sensor and process files one-by-one
-for dirpath, dirnames, files in os.walk('arff_files/phone/gyro'):
+for dirpath, dirnames, files in os.walk('arff/phone/gyro'):
   # print(f'Found directory: {dirpath}')
   for file_name in files:
     print(file_name)
