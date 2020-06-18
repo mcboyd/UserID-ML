@@ -94,16 +94,31 @@ def imposter(subject_id):
 	imp_data.Subject_Id = 0  # Set the subject id column for all of the imposter data to be 0; this is their "class"
 	return imp_data
 
+def make_input_fn(subject, imposter, batch_size, n_epochs=None):
+	def input_fn():
+                data = pd.concat([subject, imposter])
+		labels = data.pop()
+		dataset = tf.data.Dataset.from_tensor_slices((data, labels))
+		dataset = dataset.shuffle(len(subject.index))
+		dataset = dataset.repeat(n_epochs)
+		dataset = dataset.batch(batch_size)
+		return dataset
+  	return input_fn
 
 def train(subject, imposter):
-	# Do work and return model
-	model = ""
+	feature_columns = []
+	for feature_name in column_names:
+		feature_columns.append(tf.feature_column.numeric_column(feature_name, dtype=tf.float32))
+	batch = floor(sqrt(len(subject.index)))
+	train_input_fn = make_input_fn(subject, imposter, batch)
+	model = tf.estimator.BoostedTreesClassifier(feature_columns, n_batches_per_layer=batch)
+	model.train(train_input_fn, max_steps=100)
 	return model
 
 
 def test(model, subject, imposter):
-	# Do work and return test statistic
-	stat = ""
+	eval_input_fn = make_input_fn(model, subject, NUM_TEST_SAMPLES, n_epochs=1)
+	stat = model.evaluate(eval_input_fn)
 	return stat
 
 
