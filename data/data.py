@@ -3,7 +3,11 @@
 #https://stackoverflow.com/questions/40389764/how-to-translate-bytes-objects-into-literal-strings-in-pandas-dataframe-pytho
 # https://stackoverflow.com/questions/4056768/how-to-declare-array-of-zeros-in-python-or-an-array-of-a-certain-size
 # https://stackoverflow.com/questions/33907776/how-to-create-an-array-of-dataframes-in-python
+# https://blog.tensorflow.org/2019/03/how-to-train-boosted-trees-models-in-tensorflow.html
+# https://ai.stackexchange.com/questions/6383/what-do-prediction-mean-and-label-mean-represent-in-this-tensorflow-code?rq=1
 
+import math
+import pickle
 import numpy as np
 import pandas as pd
 from scipy.io.arff import loadarff 
@@ -98,43 +102,37 @@ def gen_imposter(subject_id):
   return imp_data
 
 # Defines a function that returns (features, labels) as required for TF train() and evaluate()
-def make_input_fn(subject, imposter, batch_size, n_epochs=None):
-  def input_fn():
-    data = pd.concat([subject, imposter])
-    labels = data.pop()
-    dataset = tf.data.Dataset.from_tensor_slices((data, labels))
-    dataset = dataset.shuffle(len(subject.index))
-    dataset = dataset.repeat(n_epochs)
-    dataset = dataset.batch(batch_size)
-    return dataset
-  return input_fn
+def input_fn(subject, imposter, batch_size, shuffle=True, n_epochs=None):
+  data = pd.concat([subject, imposter]) # Combine subject and impostor data
+  labels = np.sign(data.pop('g_class').astype('float32')) # Use binary classifiers, 0 for imposter 1 for subject
+  dataset = tf.data.Dataset.from_tensor_slices((dict(data), labels)) # Convert to Tensor
+  if shuffle:
+    dataset = dataset.shuffle(len(data.index))
+  dataset = dataset.repeat(n_epochs) # n_epochs=None will repeat until training is done
+  return dataset.batch(batch_size)
 
 def train(subject, imposter):
   feature_columns = []
-  for feature_name in column_names:
+  for feature_name in subject.columns:
     feature_columns.append(tf.feature_column.numeric_column(feature_name, dtype=tf.float32))
-  # Train using batch size of sqrt(N)
-  batch = floor(sqrt(len(subject.index)))
-  train_input_fn = make_input_fn(subject, imposter, batch)
+  feature_columns.pop() # Class should not be part of the feature columns
+  batch = math.floor(math.sqrt(len(subject.index)+len(imposter.index))) # Use batch size sqrt(N)
   model = tf.estimator.BoostedTreesClassifier(feature_columns, n_batches_per_layer=batch)
-  model.train(train_input_fn, max_steps=100)
+  model.train(input_fn=lambda: input_fn(subject, imposter, batch), max_steps=100)
   return model
-
-def test(model, subject, imposter):
-  # Evaluate using full testing set
-  n_samples = len(subject.index)
-  eval_input_fn = make_input_fn(subject, imposter, n_samples, n_epochs=1)
-  stat = model.evaluate(eval_input_fn)
-  return stat
-
-
 
 
 print("Processing data files...")
 process_data_files()
+pickle.dump(all_data, open("checkpoints/all_data.p", 'wb'))
+pickle.dump(subjects, open("checkpoints/subjects.p", 'wb'))
 
+#print("Loading data and subjects from pickle files")
+#all_data = pickle.load(open("pickle/all_data.p", "rb"))
+#subjects = pickle.load(open("pickle/subjects.p", "rb"))
 
 # Now do the rest of the work (train, test, stats)
+idx = 0
 for subject in subjects:
   df1 = all_data[subject].copy()  # Grab subject data and store temporarily
   subject_train = df1.sample(9)  # Grab the training data
@@ -148,15 +146,19 @@ for subject in subjects:
   imp_test = imposter.copy()  # And the rest of the imposter data for testing
 
   # Train model
+  print("\nTraining model for subject ", subject, "...")
   model = train(subject_train, imp_train)
 
   # Test model
-  stat = test(model, subject_test, imp_test)
+  print("\nTesting model for subject ", subject, "...")
+  n_samples = len(subject_test.index) + len(imp_test.index)
+  stats[idx] = model.evaluate(input_fn=lambda: input_fn(subject_test, imp_test, n_samples, False, 1))
+  idx += 1
 
-  # Save model to disk w/ filename related to the subject #
-  # model.save_to_disk(subject)
+for i in range(number_subjects):
+  print("\nStats for subject ", subjects[i], ":")
+  print(pd.Series(stats[i]))
 
-  # Save stats
-  # stats[subject] = stat
+pickle.dump(stats, open("checkpoints/stats.p", 'wb'))
 
-# print(stats)
+print("\nDone.")
