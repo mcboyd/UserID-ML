@@ -17,6 +17,14 @@ eer = brentq(lambda x : 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
 fnr = 1 - tpr
 EER = fpr(np.nanargmin(np.absolute((fnr - fpr))))
 
+#######
+#one_hot_encoder = OneHotEncoder()
+#rf_fit = rf.fit(X_train, y_train)
+#fit = one_hot_encoder.fit(rf.apply(X_train))
+#y_predicted = rf.predict_proba(X_test)[:, 1]
+#false_positive, true_positive, _ = roc_curve(y_test, y_predicted)
+#######
+
 N = get_total_negative()
 P = get_total_positive()
 FP = get_false_positives()
