@@ -16,6 +16,9 @@ import os
 import sys
 from io import StringIO
 import tensorflow as tf
+from sklearn.metrics import roc_curve
+from scipy.optimize import brentq
+from scipy.interpolate import interp1d
 
 # Use while debugging - gave me an error...
 # tf.enable_eager_execution()
@@ -155,9 +158,22 @@ for subject in subjects:
   stats[idx] = model.evaluate(input_fn=lambda: input_fn(subject_test, imp_test, n_samples, False, 1))
   idx += 1
 
+y_true = [0] * 44
+y_true[0] = 1
+y_score = []
 for i in range(number_subjects):
   print("\nStats for subject ", subjects[i], ":")
   print(pd.Series(stats[i]))
+  print(stats[i])
+  #y_true.append(stats[i].get('label/mean'))
+  y_score.append(stats[i].get('prediction/mean'))
+
+# Calculate the EER
+fpr, tpr, thresholds = roc_curve(y_true, y_score, pos_label=1)
+eer = brentq(lambda x : 1. - x - interp1d(fpr, tpr)(x), 0., 1.)
+#fnr = 1 - tpr
+#eer = fpr(np.nanargmin(np.absolute((fnr - fpr))))
+print("\nEER: ", eer)
 
 pickle.dump(stats, open("checkpoints/stats.p", 'wb'))
 
