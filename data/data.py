@@ -16,6 +16,7 @@ import os
 import sys
 from io import StringIO
 import tensorflow as tf
+from sklearn.utils import shuffle
 
 # Use while debugging - gave me an error...
 # tf.enable_eager_execution()
@@ -25,6 +26,7 @@ activity = 'A'  # Code for walking activity
 number_subjects = 44  # Number of ARFF files per sensor (1 per subject)
 subjects = []  # Array to hold list of subject/class ids
 all_data = {}  # Collection to hold dataframes of all subjects' data for the 1 activity
+model_paths = [] # List of paths to saved models per subject
 stats = [[0] for row in range(number_subjects)]  # Holds stats from model testing
 
 def process_data_files():
@@ -102,7 +104,7 @@ def gen_imposter(subject_id):
   return imp_data
 
 # Defines a function that returns (features, labels) as required for TF train() and evaluate()
-def input_fn(subject, imposter, batch_size, shuffle=True, n_epochs=None):
+def train_input_fn(subject, imposter, batch_size, shuffle=True, n_epochs=None):
   data = pd.concat([subject, imposter]) # Combine subject and impostor data
   labels = np.sign(data.pop('g_class').astype('float32')) # Use binary classifiers, 0 for imposter 1 for subject
   dataset = tf.data.Dataset.from_tensor_slices((dict(data), labels)) # Convert to Tensor
@@ -111,25 +113,45 @@ def input_fn(subject, imposter, batch_size, shuffle=True, n_epochs=None):
   dataset = dataset.repeat(n_epochs) # n_epochs=None will repeat until training is done
   return dataset.batch(batch_size)
 
-def train(subject, imposter):
+def test(subject, imposter, model):
+  data = pd.concat([subject, imposter]) # Combine subject and impostor data
+  data = shuffle(data)
+  labels = np.sign(data.pop('g_class').astype('float32'))
+  labels.reset_index(inplace=True, drop=True)
+  predictions = []
+  for i in range(len(data.index)):
+    example = tf.train.Example()
+    for feature_name in data.columns:
+      d = data.iloc[i][feature_name]
+      example.features.feature[feature_name].float_list.value.extend([d])
+    data_in = tf.constant([example.SerializeToString()])
+    prediction = model.signatures["classification"](data_in)
+    predictions.append(prediction['scores'].numpy())
+  return (predictions, labels)
+
+def get_features(data):
   feature_columns = []
-  for feature_name in subject.columns:
+  for feature_name in data.columns:
     feature_columns.append(tf.feature_column.numeric_column(feature_name, dtype=tf.float32))
   feature_columns.pop() # Class should not be part of the feature columns
+  return feature_columns
+  
+def train(subject, imposter):
+  features = get_features(subject)
   batch = math.floor(math.sqrt(len(subject.index)+len(imposter.index))) # Use batch size sqrt(N)
-  model = tf.estimator.BoostedTreesClassifier(feature_columns, n_batches_per_layer=batch)
-  model.train(input_fn=lambda: input_fn(subject, imposter, batch), max_steps=100)
+  model = tf.estimator.BoostedTreesClassifier(features, n_batches_per_layer=batch)
+  model.train(input_fn=lambda: train_input_fn(subject, imposter, batch), max_steps=100)
   return model
 
+#print("Processing data files...")
+#process_data_files()
+#pickle.dump(all_data, open("checkpoints/all_data.p", 'wb'))
+#pickle.dump(subjects, open("checkpoints/subjects.p", 'wb'))
 
-print("Processing data files...")
-process_data_files()
-pickle.dump(all_data, open("checkpoints/all_data.p", 'wb'))
-pickle.dump(subjects, open("checkpoints/subjects.p", 'wb'))
-
-#print("Loading data and subjects from pickle files")
-#all_data = pickle.load(open("pickle/all_data.p", "rb"))
-#subjects = pickle.load(open("pickle/subjects.p", "rb"))
+print("Loading data and subjects from pickle files")
+all_data = pickle.load(open("checkpoints/all_data.p", "rb"))
+subjects = pickle.load(open("checkpoints/subjects.p", "rb"))
+model_paths = pickle.load(open("checkpoints/model_paths.p", "rb"))
 
 # Now do the rest of the work (train, test, stats)
 idx = 0
@@ -146,19 +168,27 @@ for subject in subjects:
   imp_test = imposter.copy()  # And the rest of the imposter data for testing
 
   # Train model
-  print("\nTraining model for subject ", subject, "...")
-  model = train(subject_train, imp_train)
+  #print("\nTraining model for subject ", subject, "...")
+  #model = train(subject_train, imp_train)
 
+  # Save model to disk
+  #model_dir = "checkpoints/model_%s" % subject
+  #serving_input_fn = tf.estimator.export.build_parsing_serving_input_receiver_fn(
+  #  tf.feature_column.make_parse_example_spec(get_features(subject_train)))
+  #model_path = model.export_saved_model(model_dir, serving_input_fn)
+  #model_paths.append(model_path)
+ 
   # Test model
-  print("\nTesting model for subject ", subject, "...")
-  n_samples = len(subject_test.index) + len(imp_test.index)
-  stats[idx] = model.evaluate(input_fn=lambda: input_fn(subject_test, imp_test, n_samples, False, 1))
+  print("\nMaking predictions for subject ", subject, "...")
+  model = tf.saved_model.load(model_paths[idx])
+  (predictions, y_eval) = test(subject_test, imp_test, model)
   idx += 1
 
-for i in range(number_subjects):
-  print("\nStats for subject ", subjects[i], ":")
-  print(pd.Series(stats[i]))
+#for i in range(number_subjects):
+#  print("\nStats for subject ", subjects[i], ":")
+#  print(pd.Series(stats[i]))
 
-pickle.dump(stats, open("checkpoints/stats.p", 'wb'))
+#pickle.dump(model_paths, open("checkpoints/model_paths.p", 'wb'))
+#pickle.dump(stats, open("checkpoints/stats.p", 'wb'))
 
 print("\nDone.")
