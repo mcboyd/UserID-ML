@@ -30,7 +30,8 @@ number_subjects = 44  # Number of ARFF files per sensor (1 per subject)
 subjects = []  # Array to hold list of subject/class ids
 all_data = {}  # Collection to hold dataframes of all subjects' data for the 1 activity
 model_paths = [] # List of paths to saved models per subject
-stats = [[0] for row in range(number_subjects)]  # Holds stats from model testing
+predictions = {}
+y_evals = {}
 
 def process_data_files():
   dataframe_collection = {}
@@ -129,7 +130,7 @@ def test(subject, imposter, model):
       example.features.feature[feature_name].float_list.value.extend([d])
     data_in = tf.constant([example.SerializeToString()])
     prediction = model.signatures["classification"](data_in)
-    predictions.append(prediction['scores'].numpy())
+    predictions.append(prediction['scores'].numpy()[0][1])
   return (predictions, labels)
 
 def get_features(data):
@@ -151,7 +152,7 @@ def train(subject, imposter):
 #pickle.dump(all_data, open("checkpoints/all_data.p", 'wb'))
 #pickle.dump(subjects, open("checkpoints/subjects.p", 'wb'))
 
-print("Loading data and subjects from pickle files")
+#print("Loading data and subjects from pickle files")
 all_data = pickle.load(open("checkpoints/all_data.p", "rb"))
 subjects = pickle.load(open("checkpoints/subjects.p", "rb"))
 model_paths = pickle.load(open("checkpoints/model_paths.p", "rb"))
@@ -182,9 +183,11 @@ for subject in subjects:
   #model_paths.append(model_path)
  
   # Test model
-  print("\nMaking predictions for subject ", subject, "...")
+  #print("\nMaking predictions for subject ", subject, "...")
   model = tf.saved_model.load(model_paths[idx])
-  (predictions, y_eval) = test(subject_test, imp_test, model)
+  (pred, y_eval) = test(subject_test, imp_test, model)
+  predictions[subject] = pred
+  y_evals[subject] = y_eval
   idx += 1
 
 # y_true = [0] * 44
@@ -200,9 +203,10 @@ for subject in subjects:
 # Structure the arrays for the ROC function
 y=[]
 p=[]
-for i in range(40):
-  y.append(y_eval[i])
-  p.append(predictions[i][0][0])
+for subject in subjects:
+  for i in range(len(y_evals[subject])):
+    y.append(y_evals[subject][i])
+    p.append(predictions[subject][i])
 
 # Calculate the EER
 fpr, tpr, thresholds = roc_curve(y, p, pos_label=1)
@@ -212,4 +216,4 @@ print("\nEER: ", eer)
 #pickle.dump(model_paths, open("checkpoints/model_paths.p", 'wb'))
 #pickle.dump(stats, open("checkpoints/stats.p", 'wb'))
 
-print("\nDone.")
+#print("\nDone.")
