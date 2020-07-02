@@ -190,16 +190,6 @@ for subject in subjects:
   y_evals[subject] = y_eval
   idx += 1
 
-# y_true = [0] * 44
-# y_true[0] = 1
-# y_score = []
-# for i in range(number_subjects):
-#   print("\nStats for subject ", subjects[i], ":")
-#   print(pd.Series(stats[i]))
-#   print(stats[i])
-#   y_true.append(stats[i].get('label/mean'))
-#   y_score.append(stats[i].get('prediction/mean'))
-
 # Structure the arrays for the ROC function
 y=[]
 p=[]
